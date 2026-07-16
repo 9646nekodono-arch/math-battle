@@ -447,6 +447,92 @@ function titleForLevel(level) {
 /* ---------------- 汎用UI部品 ---------------- */
 
 /* コインが0から目標値までチャリンチャリンと数え上がる演出 */
+/* ============================================================
+   アセット参照レイヤー(試作)
+   実画像(PNG/WebP)が assets/monsters, assets/avatars,
+   assets/items, assets/backgrounds に用意されたら、
+   AssetImage の src を差し替えるだけで絵文字/SVGから移行できる。
+   画像が無い/読み込み失敗した場合は自動でフォールバック表示する。
+   ============================================================ */
+function AssetImage({ src, fallback, alt = "", className, style }) {
+  const [errored, setErrored] = useState(false);
+  if (!src || errored) return fallback || null;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      style={style}
+      onError={() => setErrored(true)}
+    />
+  );
+}
+
+/* 試作用モンスターイラスト(SVG手描き)。
+   将来 assets/monsters/dragon.png 等が用意されたら AssetImage 経由で自動的に画像へ切り替わる。 */
+function DragonArt({ size = 96 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100">
+      <defs>
+        <linearGradient id="dragonBody" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#FF8A63" />
+          <stop offset="100%" stopColor="#D9314A" />
+        </linearGradient>
+      </defs>
+      <ellipse cx="50" cy="62" rx="30" ry="24" fill="url(#dragonBody)" />
+      <path d="M22 50 L8 30 L28 40 Z" fill="#D9314A" />
+      <path d="M78 50 L92 30 L72 40 Z" fill="#D9314A" />
+      <circle cx="38" cy="58" r="5" fill="#0F1226" />
+      <circle cx="62" cy="58" r="5" fill="#0F1226" />
+      <circle cx="39.5" cy="56.5" r="1.6" fill="#FFC864" />
+      <circle cx="63.5" cy="56.5" r="1.6" fill="#FFC864" />
+      <path d="M35 74 Q50 84 65 74" stroke="#0F1226" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <path d="M10 66 Q0 60 6 48" stroke="#D9314A" strokeWidth="6" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+function SlimeArt({ size = 96 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100">
+      <defs>
+        <linearGradient id="slimeBody" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#7FF3E0" />
+          <stop offset="100%" stopColor="#2FB8C4" />
+        </linearGradient>
+      </defs>
+      <path d="M50 20 C75 20 85 55 78 72 C70 90 30 90 22 72 C15 55 25 20 50 20 Z" fill="url(#slimeBody)" />
+      <ellipse cx="38" cy="38" rx="8" ry="6" fill="#FFFFFF" opacity="0.5" />
+      <circle cx="40" cy="60" r="5" fill="#0F1226" />
+      <circle cx="60" cy="60" r="5" fill="#0F1226" />
+      <path d="M42 72 Q50 78 58 72" stroke="#0F1226" strokeWidth="3" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+function DemonKingArt({ size = 96 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100">
+      <defs>
+        <linearGradient id="demonBody" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#B24FFF" />
+          <stop offset="100%" stopColor="#5B1DAA" />
+        </linearGradient>
+      </defs>
+      <path d="M28 30 L18 8 L38 22 Z" fill="#5B1DAA" />
+      <path d="M72 30 L82 8 L62 22 Z" fill="#5B1DAA" />
+      <ellipse cx="50" cy="55" rx="28" ry="30" fill="url(#demonBody)" />
+      <circle cx="40" cy="52" r="5" fill="#FFC864" />
+      <circle cx="60" cy="52" r="5" fill="#FFC864" />
+      <path d="M36 70 Q50 62 64 70" stroke="#0F1226" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <path d="M50 82 L44 92 L56 92 Z" fill="#5B1DAA" />
+    </svg>
+  );
+}
+const MONSTER_ART = {
+  スライム: SlimeArt,
+  ドラゴン: DragonArt,
+  まおう: DemonKingArt,
+};
+
 function CoinCounter({ amount }) {
   const [shown, setShown] = useState(0);
   const [coinPops, setCoinPops] = useState([]);
@@ -778,15 +864,43 @@ function Home({ profile, onStartPractice, onReviewUnit, onStartBattle, onOpenZuk
 
           <button
             onClick={onStartBattle}
-            className="rounded-2xl p-5 text-left bg-gradient-to-br from-[#3A2340] to-[#1B1F3B] border border-[#3A4070] hover:border-[#FF7A45] transition"
+            className="relative rounded-2xl p-5 pr-28 text-left overflow-hidden transition active:translate-y-1"
+            style={{
+              background: "linear-gradient(155deg, #4A2E8C 0%, #241454 55%, #170B33 100%)",
+              border: "2px solid #8A5CFF",
+              boxShadow: "0 5px 0 #4A2A9E, 0 10px 18px rgba(90,40,220,0.35), inset 0 1px 0 rgba(255,255,255,0.25)",
+            }}
           >
-            <p className="text-sm text-[#FF7A45] font-semibold mb-1">BATTLE MODE</p>
-            <p className="text-xl font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            {/* 内側のハイライト(上から光が当たっている雰囲気) */}
+            <div
+              className="pointer-events-none absolute inset-0 rounded-2xl"
+              style={{ background: "radial-gradient(120% 90% at 15% 0%, rgba(255,255,255,0.16), transparent 55%)" }}
+            />
+            <p
+              className="relative text-sm font-bold mb-1 tracking-wide"
+              style={{ color: "#FFC864", textShadow: "0 2px 2px rgba(0,0,0,0.6)" }}
+            >
+              BATTLE MODE
+            </p>
+            <p
+              className="relative text-xl font-bold"
+              style={{ fontFamily: "'Space Grotesk', sans-serif", textShadow: "0 2px 3px rgba(0,0,0,0.6), 0 0 10px rgba(138,92,255,0.5)" }}
+            >
               AIと たいせん する
             </p>
-            <p className="text-xs text-[#8B90BE] mt-1">
+            <p className="relative text-xs text-[#C9C2F0] mt-1">
               勝{profile.battle.wins} 敗{profile.battle.losses} 分{profile.battle.draws}
             </p>
+
+            {/* モンスターイラスト(assets/monsters/dragon.png が用意され次第そちらへ自動移行) */}
+            <div className="absolute right-2 bottom-0 opacity-95" style={{ filter: "drop-shadow(0 6px 6px rgba(0,0,0,0.5))" }}>
+              <AssetImage
+                src="/assets/monsters/dragon.png"
+                alt="ドラゴン"
+                className="w-24 h-24"
+                fallback={<DragonArt size={96} />}
+              />
+            </div>
           </button>
 
           <button
