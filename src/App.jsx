@@ -77,7 +77,7 @@ const gcd = (a, b) => (b === 0 ? Math.abs(a) : gcd(b, a % b));
 
 /* ---------------- カリキュラム定義 ---------------- */
 /* 各ユニットは学年の代表的な範囲。type によって回答UIと採点方法が変わる。
-   type: 'int' | 'decimal' | 'signed' | 'fracFixed' | 'fracFree'         */
+   type: 'int' | 'decimal' | 'signed' | 'fracFixed' | 'fracFree' | 'system2'    */
 
 const UNITS = [
   {
@@ -312,6 +312,33 @@ const UNITS = [
       return { text: `x = ${x} のとき ${a}x ${bStr}`, answer };
     },
   },
+  {
+    id: "u16",
+    grade: "中学2年",
+    title: "連立方程式",
+    type: "system2",
+    timeTarget: 25,
+    gen: () => {
+      // 解 (x, y) を先に決めてから、係数 a,b,d,e をランダムに選び、
+      // 右辺 c,f を逆算する。行列 [[a,b],[d,e]] が正則(ae-bd≠0)になる
+      // 組み合わせだけを採用し、解がただ1組に決まるようにする。
+      const x = randInt(-5, 5), y = randInt(-5, 5);
+      let a, b, d, e;
+      do {
+        a = randInt(1, 5);
+        b = randInt(1, 5);
+        d = randInt(1, 5);
+        e = randInt(1, 5);
+      } while (a * e - b * d === 0);
+      const c = a * x + b * y;
+      const f = d * x + e * y;
+      return {
+        text: `${a}x + ${b}y = ${c}\n${d}x + ${e}y = ${f}`,
+        answerX: x,
+        answerY: y,
+      };
+    },
+  },
 ];
 
 const LAST_UNIT_INDEX = UNITS.length - 1;
@@ -358,6 +385,8 @@ function checkAnswer(unit, problem, input) {
       if (!d) return false;
       return n * problem.answerDen === problem.answerNum * d;
     }
+    case "system2":
+      return Number(input.x) === problem.answerX && Number(input.y) === problem.answerY;
     default:
       return false;
   }
@@ -981,7 +1010,7 @@ function NumPad({ onDigit, onClear, onBack, onToggleSign, showSign, onDot, showD
           style={{ backgroundColor: "#242A4F", color: "#4FE0D0" }}
           className="border border-[#4FE0D0] rounded-xl py-3 text-xs font-bold active:opacity-80"
         >
-          {focusField === "num" ? "↓ぶんぼへ" : "↑ぶんしへ"}
+          {focusField === "num" ? "↓つぎへ" : "↑まえへ"}
         </button>
       ) : (
         <div />
@@ -1010,7 +1039,9 @@ function useAnswerInput(unit) {
   const [den, setDen] = useState("");
   const [extra, setExtra] = useState(""); // あまり
   const [negative, setNegative] = useState(false);
-  const [focusField, setFocusField] = useState("num"); // for fracFree
+  const [focusField, setFocusField] = useState("num"); // for fracFree / system2
+
+  const isTwoField = unit.type === "fracFree" || unit.type === "fracSameDenom" || unit.type === "system2";
 
   const reset = () => {
     setValue("");
@@ -1022,7 +1053,7 @@ function useAnswerInput(unit) {
   };
 
   const digit = (d) => {
-    if (unit.type === "fracFree" || unit.type === "fracSameDenom") {
+    if (isTwoField) {
       if (focusField === "num") setNum((v) => (v.length < 3 ? v + d : v));
       else setDen((v) => (v.length < 3 ? v + d : v));
       return;
@@ -1035,7 +1066,7 @@ function useAnswerInput(unit) {
   };
 
   const back = () => {
-    if (unit.type === "fracFree" || unit.type === "fracSameDenom") {
+    if (isTwoField) {
       if (focusField === "num") setNum((v) => v.slice(0, -1));
       else setDen((v) => v.slice(0, -1));
       return;
@@ -1044,7 +1075,7 @@ function useAnswerInput(unit) {
   };
 
   const clear = () => {
-    if (unit.type === "fracFree" || unit.type === "fracSameDenom") {
+    if (isTwoField) {
       if (focusField === "num") setNum("");
       else setDen("");
       return;
@@ -1061,6 +1092,7 @@ function useAnswerInput(unit) {
   const advanceFocus = () => setFocusField((f) => (f === "num" ? "den" : "num"));
 
   const packaged = () => {
+    if (unit.type === "system2") return { x: num, y: den };
     if (unit.type === "fracFree" || unit.type === "fracSameDenom") return { num, den };
     if (unit.type === "fracFixed") return { value, extra };
     if (unit.type === "signed") {
@@ -1124,6 +1156,7 @@ function Practice({ profile, unitIndex, onFinish }) {
   const canSubmit = () => {
     if (unit.type === "fracFree") return input.num !== ""; // 分母は空欄なら1として扱う
     if (unit.type === "fracSameDenom") return input.num !== "" && input.den !== "";
+    if (unit.type === "system2") return input.num !== "" && input.den !== "";
     if (unit.type === "fracFixed") return input.value !== "" && input.extra !== "";
     return input.value !== "";
   };
@@ -1157,10 +1190,10 @@ function Practice({ profile, unitIndex, onFinish }) {
             </div>
           )}
           <div
-            className={`text-4xl font-bold text-center mb-2 transition-colors ${
+            className={`text-4xl font-bold text-center mb-2 whitespace-pre-line transition-colors ${
               feedback === "correct" ? "text-[#6EE7A8]" : feedback === "wrong" ? "text-[#FF5D73]" : "text-[#F3F5FF]"
             }`}
-            style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+            style={{ fontFamily: "'Space Grotesk', sans-serif", lineHeight: unit.type === "system2" ? 1.3 : "inherit" }}
           >
             {problem.text}
           </div>
@@ -1168,7 +1201,30 @@ function Practice({ profile, unitIndex, onFinish }) {
 
           {/* 回答表示 */}
           <div className="flex items-center gap-2 my-6 min-h-[3rem]">
-            {unit.type === "fracFree" ? (
+            {unit.type === "system2" ? (
+              <div className="flex flex-col items-center">
+                <span className="text-[10px] text-[#8B90BE] mb-1">x</span>
+                <button
+                  onClick={() => input.setFocusField("num")}
+                  className={`text-2xl font-mono px-4 py-1 rounded border-b-2 ${
+                    input.focusField === "num" ? "border-[#4FE0D0] text-[#4FE0D0]" : "border-[#3A4070] text-[#F3F5FF]"
+                  }`}
+                >
+                  {input.num || "?"}
+                </button>
+                <div className="w-16 h-[3px] my-1" style={{ backgroundColor: "#8B90BE" }} />
+                <button
+                  onClick={() => input.setFocusField("den")}
+                  className={`text-2xl font-mono px-4 py-1 rounded border-b-2 ${
+                    input.focusField === "den" ? "border-[#4FE0D0] text-[#4FE0D0]" : "border-[#3A4070] text-[#F3F5FF]"
+                  }`}
+                >
+                  {input.den || "?"}
+                </button>
+                <span className="text-[10px] text-[#8B90BE] mt-1">y</span>
+                <span className="text-[9px] text-[#4A4F72] mt-1">※マイナスの数は「−5」のように「−」を先頭に入力</span>
+              </div>
+            ) : unit.type === "fracFree" ? (
               <div className="flex flex-col items-center">
                 <span className="text-[10px] text-[#8B90BE] mb-1">ぶんし(上の数)</span>
                 <button
@@ -1265,7 +1321,7 @@ function Practice({ profile, unitIndex, onFinish }) {
             showSign={unit.type === "signed"}
             onDot={input.dot}
             showDot={unit.type === "decimal"}
-            showAdvance={unit.type === "fracFree" || unit.type === "fracSameDenom"}
+            showAdvance={unit.type === "fracFree" || unit.type === "fracSameDenom" || unit.type === "system2"}
             focusField={input.focusField}
             onAdvance={input.advanceFocus}
           />
@@ -1627,6 +1683,7 @@ function Battle({ profile, unitIndex, aiRankKey, onFinish }) {
   const canSubmit = () => {
     if (unit.type === "fracFree") return input.num !== ""; // 分母は空欄なら1として扱う
     if (unit.type === "fracSameDenom") return input.num !== "" && input.den !== "";
+    if (unit.type === "system2") return input.num !== "" && input.den !== "";
     if (unit.type === "fracFixed") return input.value !== "" && input.extra !== "";
     return input.value !== "";
   };
@@ -1739,16 +1796,38 @@ function Battle({ profile, unitIndex, aiRankKey, onFinish }) {
             </div>
           )}
           <div
-            className={`text-3xl font-bold text-center mb-6 transition-colors ${
+            className={`text-3xl font-bold text-center mb-6 whitespace-pre-line transition-colors ${
               userFlash === "correct" ? "text-[#6EE7A8]" : userFlash === "wrong" ? "text-[#FF5D73]" : "text-[#F3F5FF]"
             }`}
-            style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+            style={{ fontFamily: "'Space Grotesk', sans-serif", lineHeight: unit.type === "system2" ? 1.3 : "inherit" }}
           >
             {problem.text}
           </div>
 
           <div className="flex items-center gap-2 mb-5 min-h-[2.5rem]">
-            {unit.type === "fracFree" ? (
+            {unit.type === "system2" ? (
+              <div className="flex flex-col items-center">
+                <span className="text-[9px] text-[#8B90BE] mb-0.5">x</span>
+                <button
+                  onClick={() => input.setFocusField("num")}
+                  className={`text-xl font-mono px-3 py-1 rounded border-b-2 ${
+                    input.focusField === "num" ? "border-[#4FE0D0] text-[#4FE0D0]" : "border-[#3A4070]"
+                  }`}
+                >
+                  {input.num || "?"}
+                </button>
+                <div className="w-14 h-[3px] my-1" style={{ backgroundColor: "#8B90BE" }} />
+                <button
+                  onClick={() => input.setFocusField("den")}
+                  className={`text-xl font-mono px-3 py-1 rounded border-b-2 ${
+                    input.focusField === "den" ? "border-[#4FE0D0] text-[#4FE0D0]" : "border-[#3A4070]"
+                  }`}
+                >
+                  {input.den || "?"}
+                </button>
+                <span className="text-[9px] text-[#8B90BE] mt-0.5">y</span>
+              </div>
+            ) : unit.type === "fracFree" ? (
               <div className="flex flex-col items-center">
                 <span className="text-[9px] text-[#8B90BE] mb-0.5">ぶんし</span>
                 <button
@@ -1843,7 +1922,7 @@ function Battle({ profile, unitIndex, aiRankKey, onFinish }) {
             showSign={unit.type === "signed"}
             onDot={input.dot}
             showDot={unit.type === "decimal"}
-            showAdvance={unit.type === "fracFree" || unit.type === "fracSameDenom"}
+            showAdvance={unit.type === "fracFree" || unit.type === "fracSameDenom" || unit.type === "system2"}
             focusField={input.focusField}
             onAdvance={input.advanceFocus}
           />
