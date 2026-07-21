@@ -1039,6 +1039,8 @@ function useAnswerInput(unit) {
   const [den, setDen] = useState("");
   const [extra, setExtra] = useState(""); // あまり
   const [negative, setNegative] = useState(false);
+  const [numNegative, setNumNegative] = useState(false); // x(連立方程式)の符号
+  const [denNegative, setDenNegative] = useState(false); // y(連立方程式)の符号
   const [focusField, setFocusField] = useState("num"); // for fracFree / system2
 
   const isTwoField = unit.type === "fracFree" || unit.type === "fracSameDenom" || unit.type === "system2";
@@ -1049,6 +1051,8 @@ function useAnswerInput(unit) {
     setDen("");
     setExtra("");
     setNegative(false);
+    setNumNegative(false);
+    setDenNegative(false);
     setFocusField("num");
   };
 
@@ -1088,11 +1092,17 @@ function useAnswerInput(unit) {
   };
 
   const toggleSign = () => setNegative((n) => !n);
+  const toggleNumSign = () => setNumNegative((n) => !n);
+  const toggleDenSign = () => setDenNegative((n) => !n);
 
   const advanceFocus = () => setFocusField((f) => (f === "num" ? "den" : "num"));
 
   const packaged = () => {
-    if (unit.type === "system2") return { x: num, y: den };
+    if (unit.type === "system2") {
+      const x = num === "" ? "" : (numNegative ? -1 : 1) * Number(num);
+      const y = den === "" ? "" : (denNegative ? -1 : 1) * Number(den);
+      return { x, y };
+    }
     if (unit.type === "fracFree" || unit.type === "fracSameDenom") return { num, den };
     if (unit.type === "fracFixed") return { value, extra };
     if (unit.type === "signed") {
@@ -1103,9 +1113,9 @@ function useAnswerInput(unit) {
   };
 
   return {
-    value, num, den, extra, negative, focusField,
+    value, num, den, extra, negative, numNegative, denNegative, focusField,
     setFocusField, setExtra,
-    digit, back, clear, dot, toggleSign, advanceFocus, reset, packaged,
+    digit, back, clear, dot, toggleSign, toggleNumSign, toggleDenSign, advanceFocus, reset, packaged,
   };
 }
 
@@ -1202,27 +1212,54 @@ function Practice({ profile, unitIndex, onFinish }) {
           {/* 回答表示 */}
           <div className="flex items-center gap-2 my-6 min-h-[3rem]">
             {unit.type === "system2" ? (
-              <div className="flex flex-col items-center">
-                <span className="text-[10px] text-[#8B90BE] mb-1">x</span>
-                <button
-                  onClick={() => input.setFocusField("num")}
-                  className={`text-2xl font-mono px-4 py-1 rounded border-b-2 ${
-                    input.focusField === "num" ? "border-[#4FE0D0] text-[#4FE0D0]" : "border-[#3A4070] text-[#F3F5FF]"
-                  }`}
-                >
-                  {input.num || "?"}
-                </button>
-                <div className="w-16 h-[3px] my-1" style={{ backgroundColor: "#8B90BE" }} />
-                <button
-                  onClick={() => input.setFocusField("den")}
-                  className={`text-2xl font-mono px-4 py-1 rounded border-b-2 ${
-                    input.focusField === "den" ? "border-[#4FE0D0] text-[#4FE0D0]" : "border-[#3A4070] text-[#F3F5FF]"
-                  }`}
-                >
-                  {input.den || "?"}
-                </button>
-                <span className="text-[10px] text-[#8B90BE] mt-1">y</span>
-                <span className="text-[9px] text-[#4A4F72] mt-1">※マイナスの数は「−5」のように「−」を先頭に入力</span>
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[#8B90BE] w-5">x=</span>
+                  <button
+                    onClick={input.toggleNumSign}
+                    className="text-lg font-bold w-9 h-9 rounded border"
+                    style={{
+                      borderColor: input.numNegative ? "#FF7A45" : "#3A4070",
+                      color: input.numNegative ? "#FF7A45" : "#8B90BE",
+                      backgroundColor: input.numNegative ? "#FF7A451A" : "transparent",
+                    }}
+                  >
+                    ±
+                  </button>
+                  <button
+                    onClick={() => input.setFocusField("num")}
+                    className={`text-2xl font-mono px-4 py-1 rounded border-b-2 ${
+                      input.focusField === "num" ? "border-[#4FE0D0] text-[#4FE0D0]" : "border-[#3A4070] text-[#F3F5FF]"
+                    }`}
+                  >
+                    {input.numNegative ? "−" : ""}
+                    {input.num || "?"}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[#8B90BE] w-5">y=</span>
+                  <button
+                    onClick={input.toggleDenSign}
+                    className="text-lg font-bold w-9 h-9 rounded border"
+                    style={{
+                      borderColor: input.denNegative ? "#FF7A45" : "#3A4070",
+                      color: input.denNegative ? "#FF7A45" : "#8B90BE",
+                      backgroundColor: input.denNegative ? "#FF7A451A" : "transparent",
+                    }}
+                  >
+                    ±
+                  </button>
+                  <button
+                    onClick={() => input.setFocusField("den")}
+                    className={`text-2xl font-mono px-4 py-1 rounded border-b-2 ${
+                      input.focusField === "den" ? "border-[#4FE0D0] text-[#4FE0D0]" : "border-[#3A4070] text-[#F3F5FF]"
+                    }`}
+                  >
+                    {input.denNegative ? "−" : ""}
+                    {input.den || "?"}
+                  </button>
+                </div>
+                <span className="text-[9px] text-[#4A4F72] mt-1">数字を入力してから「±」でマイナスに切り替え</span>
               </div>
             ) : unit.type === "fracFree" ? (
               <div className="flex flex-col items-center">
@@ -1806,26 +1843,53 @@ function Battle({ profile, unitIndex, aiRankKey, onFinish }) {
 
           <div className="flex items-center gap-2 mb-5 min-h-[2.5rem]">
             {unit.type === "system2" ? (
-              <div className="flex flex-col items-center">
-                <span className="text-[9px] text-[#8B90BE] mb-0.5">x</span>
-                <button
-                  onClick={() => input.setFocusField("num")}
-                  className={`text-xl font-mono px-3 py-1 rounded border-b-2 ${
-                    input.focusField === "num" ? "border-[#4FE0D0] text-[#4FE0D0]" : "border-[#3A4070]"
-                  }`}
-                >
-                  {input.num || "?"}
-                </button>
-                <div className="w-14 h-[3px] my-1" style={{ backgroundColor: "#8B90BE" }} />
-                <button
-                  onClick={() => input.setFocusField("den")}
-                  className={`text-xl font-mono px-3 py-1 rounded border-b-2 ${
-                    input.focusField === "den" ? "border-[#4FE0D0] text-[#4FE0D0]" : "border-[#3A4070]"
-                  }`}
-                >
-                  {input.den || "?"}
-                </button>
-                <span className="text-[9px] text-[#8B90BE] mt-0.5">y</span>
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-[#8B90BE] w-4">x=</span>
+                  <button
+                    onClick={input.toggleNumSign}
+                    className="text-base font-bold w-7 h-7 rounded border"
+                    style={{
+                      borderColor: input.numNegative ? "#FF7A45" : "#3A4070",
+                      color: input.numNegative ? "#FF7A45" : "#8B90BE",
+                      backgroundColor: input.numNegative ? "#FF7A451A" : "transparent",
+                    }}
+                  >
+                    ±
+                  </button>
+                  <button
+                    onClick={() => input.setFocusField("num")}
+                    className={`text-xl font-mono px-3 py-1 rounded border-b-2 ${
+                      input.focusField === "num" ? "border-[#4FE0D0] text-[#4FE0D0]" : "border-[#3A4070]"
+                    }`}
+                  >
+                    {input.numNegative ? "−" : ""}
+                    {input.num || "?"}
+                  </button>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-[#8B90BE] w-4">y=</span>
+                  <button
+                    onClick={input.toggleDenSign}
+                    className="text-base font-bold w-7 h-7 rounded border"
+                    style={{
+                      borderColor: input.denNegative ? "#FF7A45" : "#3A4070",
+                      color: input.denNegative ? "#FF7A45" : "#8B90BE",
+                      backgroundColor: input.denNegative ? "#FF7A451A" : "transparent",
+                    }}
+                  >
+                    ±
+                  </button>
+                  <button
+                    onClick={() => input.setFocusField("den")}
+                    className={`text-xl font-mono px-3 py-1 rounded border-b-2 ${
+                      input.focusField === "den" ? "border-[#4FE0D0] text-[#4FE0D0]" : "border-[#3A4070]"
+                    }`}
+                  >
+                    {input.denNegative ? "−" : ""}
+                    {input.den || "?"}
+                  </button>
+                </div>
               </div>
             ) : unit.type === "fracFree" ? (
               <div className="flex flex-col items-center">
