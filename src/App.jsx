@@ -587,8 +587,16 @@ function CoinCounter({ amount }) {
       className="flex items-center gap-2 mt-4 rounded-full px-4 py-2 relative"
       style={{ backgroundColor: "#1B1F3B", border: "1px solid #FFC864", animation: "mb-pop-scale .4s ease" }}
     >
-      <span className="text-lg" style={{ animation: shown < amount ? "mb-coin-shake .18s ease infinite" : "none" }}>
-        🪙
+      <span
+        className="inline-flex items-center justify-center"
+        style={{ width: 20, height: 20, animation: shown < amount ? "mb-coin-shake .18s ease infinite" : "none" }}
+      >
+        <AssetImage
+          src="/assets/items/coin.png"
+          alt="コイン"
+          className="w-5 h-5 object-contain"
+          fallback={<span className="text-lg leading-none">🪙</span>}
+        />
       </span>
       <span className="font-bold font-mono" style={{ color: "#FFC864" }}>
         +{shown} コイン
@@ -596,10 +604,15 @@ function CoinCounter({ amount }) {
       {coinPops.slice(-1).map((key) => (
         <span
           key={key}
-          className="absolute -top-2 right-3 text-xs"
-          style={{ animation: "mb-coin-float .5s ease forwards" }}
+          className="absolute -top-2 right-3"
+          style={{ animation: "mb-coin-float .5s ease forwards", width: 14, height: 14 }}
         >
-          🪙
+          <AssetImage
+            src="/assets/items/coin.png"
+            alt="コイン"
+            className="w-3.5 h-3.5 object-contain"
+            fallback={<span className="text-xs leading-none">🪙</span>}
+          />
         </span>
       ))}
     </div>
@@ -665,7 +678,14 @@ function TopBar({ profile, onHome, onSwitchProfile }) {
       {profile && (
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 rounded-full px-2.5 py-1" style={{ backgroundColor: "#1B1F3B", border: "1px solid #FFC864" }}>
-            <span className="text-sm">🪙</span>
+            <span className="inline-flex items-center justify-center" style={{ width: 16, height: 16 }}>
+              <AssetImage
+                src="/assets/items/coin.png"
+                alt="コイン"
+                className="w-4 h-4 object-contain"
+                fallback={<span className="text-sm leading-none">🪙</span>}
+              />
+            </span>
             <span className="text-xs font-bold" style={{ color: "#FFC864" }}>{profile.coins || 0}</span>
           </div>
           <button
