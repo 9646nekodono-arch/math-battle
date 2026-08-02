@@ -723,11 +723,34 @@ function TopBar({ profile, onHome, onSwitchProfile }) {
 
 const AVATARS = ["🦊", "🐯", "🐼", "🦁", "🐸", "🐧", "🦄", "🐙", "🐨", "🦉"];
 
+/* SOHARIAオリジナルキャラクター。
+   avatar には代表絵文字を保存し続けるので、保存データ構造・他画面は一切変更不要。
+   画像が読み込めない場合は代表絵文字へ自動フォールバックする。 */
+const CHARACTERS = [
+  { id: "sora", name: "ソラ", className: "けんし", emoji: "🗡️", img: "/assets/characters/sora.png", desc: "こうげきと まもりの バランスがとれた 剣士！" },
+  { id: "luna", name: "ルーナ", className: "まほうつかい", emoji: "⭐", img: "/assets/characters/luna.png", desc: "強力な まほうで 敵に大ダメージ！" },
+  { id: "leaf", name: "リーフ", className: "ゆみつかい", emoji: "🏹", img: "/assets/characters/leaf.png", desc: "クリティカルが出やすく すばやい攻撃が得意！" },
+  { id: "coco", name: "ココ", className: "いやしのようせい", emoji: "💗", img: "/assets/characters/coco.png", desc: "みんなのHPを回復して パーティを支えるよ！" },
+  { id: "kage", name: "カゲ", className: "しのび", emoji: "🥷", img: "/assets/characters/kage.png", desc: "すばやく攻撃して 敵を翻弄するぞ！" },
+];
+
+/* キャラクターカード用の画像表示。画像が無い/読み込み失敗時は代表絵文字にフォールバック。 */
+function CharacterThumb({ character, className }) {
+  return (
+    <AssetImage
+      src={character.img}
+      alt={character.name}
+      className={className}
+      fallback={<span className={`${className} flex items-center justify-center text-4xl`}>{character.emoji}</span>}
+    />
+  );
+}
+
 function ProfileSelect({ onSelect }) {
   const [profiles, setProfiles] = useState(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
-  const [avatar, setAvatar] = useState(AVATARS[0]);
+  const [avatar, setAvatar] = useState(CHARACTERS[0].emoji);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -820,20 +843,22 @@ function ProfileSelect({ onSelect }) {
               {error && <p className="text-[#FF5D73] text-xs mt-1">{error}</p>}
             </div>
             <div>
-              <label className="text-xs text-[#8B90BE]">アバター</label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {AVATARS.map((a) => (
+              <label className="text-xs text-[#8B90BE]">キャラクター</label>
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                {CHARACTERS.map((c) => (
                   <button
-                    key={a}
+                    key={c.id}
                     type="button"
-                    onClick={() => setAvatar(a)}
-                    className={`text-2xl w-10 h-10 flex items-center justify-center rounded-lg border transition ${
-                      avatar === a
+                    onClick={() => setAvatar(c.emoji)}
+                    className={`flex flex-col items-center rounded-xl border px-1.5 py-2 transition ${
+                      avatar === c.emoji
                         ? "border-[#4FE0D0] bg-[#4FE0D0]/10"
                         : "border-[#3A4070]"
                     }`}
                   >
-                    {a}
+                    <CharacterThumb character={c} className="w-14 h-16 object-contain" />
+                    <span className="text-xs font-bold mt-1">{c.name}</span>
+                    <span className="text-[9px] text-[#8B90BE]">{c.className}</span>
                   </button>
                 ))}
               </div>
@@ -1643,7 +1668,7 @@ function BattleSetup({ profile, onStart, onCancel }) {
       </div>
       {levelForXp(profile.xp) < HERO_LEVEL && (
         <p className="text-[10px] text-[#8B90BE] mb-6">
-          👑 勇者(Lv.{HERO_LEVEL})になると まおうに ちょうせんできる！ (いま Lv.{levelForXp(profile.xp)})
+          👑 勇者(Lv.{HERO_LEVEL})になると 魔王に ちょうせんできる！ (いま Lv.{levelForXp(profile.xp)})
         </p>
       )}
       {levelForXp(profile.xp) >= HERO_LEVEL && <div className="mb-6" />}
