@@ -1503,7 +1503,7 @@ function PracticeResult({ profile, result, unit, isReview, coinsEarned, recordIn
 const AI_RANKS = {
   easy: { label: "イージー", monster: "スライム", emoji: "💧", img: "/assets/monsters/slime.png", correctProb: 0.55, timeRange: [3500, 7200], color: "#6EE7A8", unlockLevel: 1 },
   normal: { label: "ノーマル", monster: "ゴブリン", emoji: "🧌", img: "/assets/monsters/goblin.png", correctProb: 0.75, timeRange: [2200, 4600], color: "#FFC864", unlockLevel: 1 },
-  hard: { label: "ハード", monster: "ドラゴン", emoji: "🐉", correctProb: 0.92, timeRange: [1200, 2800], color: "#FF5D73", unlockLevel: 1 },
+  hard: { label: "ハード", monster: "ドラゴン", emoji: "🐉", img: "/assets/monsters/dragon.png", correctProb: 0.92, timeRange: [1200, 2800], color: "#FF5D73", unlockLevel: 1 },
   orc: { label: "オーク", monster: "オーク", emoji: "👹", correctProb: 0.82, timeRange: [1800, 3800], color: "#8FE05C", unlockLevel: 10 },
   lich: { label: "リッチ", monster: "リッチ", emoji: "💀", correctProb: 0.88, timeRange: [1500, 3200], color: "#7C8CFF", unlockLevel: 18 },
   phoenix: { label: "フェニックス", monster: "フェニックス", emoji: "🦅", correctProb: 0.93, timeRange: [1300, 2600], color: "#FF9F45", unlockLevel: 28 },
