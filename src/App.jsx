@@ -728,11 +728,11 @@ const AVATARS = ["🦊", "🐯", "🐼", "🦁", "🐸", "🐧", "🦄", "🐙",
    avatar には代表絵文字を保存し続けるので、保存データ構造・他画面は一切変更不要。
    画像が読み込めない場合は代表絵文字へ自動フォールバックする。 */
 const CHARACTERS = [
-  { id: "sora", name: "ソラ", className: "けんし", emoji: "🗡️", img: "/assets/characters/sora.png", desc: "こうげきと まもりの バランスがとれた 剣士！" },
-  { id: "luna", name: "ルーナ", className: "まほうつかい", emoji: "⭐", img: "/assets/characters/luna.png", desc: "強力な まほうで 敵に大ダメージ！" },
-  { id: "leaf", name: "リーフ", className: "ゆみつかい", emoji: "🏹", img: "/assets/characters/leaf.png", desc: "クリティカルが出やすく すばやい攻撃が得意！" },
-  { id: "coco", name: "ココ", className: "いやしのようせい", emoji: "💗", img: "/assets/characters/coco.png", desc: "みんなのHPを回復して パーティを支えるよ！" },
-  { id: "kage", name: "カゲ", className: "しのび", emoji: "🥷", img: "/assets/characters/kage.png", desc: "すばやく攻撃して 敵を翻弄するぞ！" },
+  { id: "sora", name: "ソラ", className: "けんし", emoji: "🗡️", img: "/assets/characters/sora.png", halfImg: "/assets/characters/sora_half.png", desc: "こうげきと まもりの バランスがとれた 剣士！" },
+  { id: "luna", name: "ルーナ", className: "まほうつかい", emoji: "⭐", img: "/assets/characters/luna.png", halfImg: "/assets/characters/luna_half.png", desc: "強力な まほうで 敵に大ダメージ！" },
+  { id: "leaf", name: "リーフ", className: "ゆみつかい", emoji: "🏹", img: "/assets/characters/leaf.png", halfImg: "/assets/characters/leaf_half.png", desc: "クリティカルが出やすく すばやい攻撃が得意！" },
+  { id: "coco", name: "ココ", className: "いやしのようせい", emoji: "💗", img: "/assets/characters/coco.png", halfImg: "/assets/characters/coco_half.png", desc: "みんなのHPを回復して パーティを支えるよ！" },
+  { id: "kage", name: "カゲ", className: "しのび", emoji: "🥷", img: "/assets/characters/kage.png", halfImg: "/assets/characters/kage_half.png", desc: "すばやく攻撃して 敵を翻弄するぞ！" },
 ];
 
 /* キャラクターカード用の画像表示。画像が無い/読み込み失敗時は代表絵文字にフォールバック。 */
@@ -757,7 +757,7 @@ function CharacterImage({ characterId, avatar, className, style }) {
   if (!character) return fallback;
   return (
     <AssetImage
-      src={character.img}
+      src={character.halfImg || character.img}
       alt={character.name}
       className={className}
       style={style}
