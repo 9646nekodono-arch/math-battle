@@ -497,6 +497,24 @@ function AssetImage({ src, fallback, alt = "", className, style }) {
   );
 }
 
+/* AI_RANKS用の共通表示コンポーネント。
+   rank.img が指定されていれば実画像(AssetImage経由)、
+   無い、または読み込み失敗した場合はこれまで通り rank.emoji を表示する。 */
+function MonsterEmoji({ rank, className, style }) {
+  if (rank.img) {
+    return (
+      <AssetImage
+        src={rank.img}
+        alt={rank.monster}
+        className={className}
+        style={style}
+        fallback={<span className={className} style={style}>{rank.emoji}</span>}
+      />
+    );
+  }
+  return <span className={className} style={style}>{rank.emoji}</span>;
+}
+
 /* 試作用モンスターイラスト(SVG手描き)。
    将来 assets/monsters/dragon.png 等が用意されたら AssetImage 経由で自動的に画像へ切り替わる。 */
 function DragonArt({ size = 96 }) {
@@ -1483,8 +1501,8 @@ function PracticeResult({ profile, result, unit, isReview, coinsEarned, recordIn
 /* ---------------- 対戦モード ---------------- */
 
 const AI_RANKS = {
-  easy: { label: "イージー", monster: "スライム", emoji: "💧", correctProb: 0.55, timeRange: [3500, 7200], color: "#6EE7A8", unlockLevel: 1 },
-  normal: { label: "ノーマル", monster: "ゴブリン", emoji: "🧌", correctProb: 0.75, timeRange: [2200, 4600], color: "#FFC864", unlockLevel: 1 },
+  easy: { label: "イージー", monster: "スライム", emoji: "💧", img: "/assets/monsters/slime.png", correctProb: 0.55, timeRange: [3500, 7200], color: "#6EE7A8", unlockLevel: 1 },
+  normal: { label: "ノーマル", monster: "ゴブリン", emoji: "🧌", img: "/assets/monsters/goblin.png", correctProb: 0.75, timeRange: [2200, 4600], color: "#FFC864", unlockLevel: 1 },
   hard: { label: "ハード", monster: "ドラゴン", emoji: "🐉", correctProb: 0.92, timeRange: [1200, 2800], color: "#FF5D73", unlockLevel: 1 },
   orc: { label: "オーク", monster: "オーク", emoji: "👹", correctProb: 0.82, timeRange: [1800, 3800], color: "#8FE05C", unlockLevel: 10 },
   lich: { label: "リッチ", monster: "リッチ", emoji: "💀", correctProb: 0.88, timeRange: [1500, 3200], color: "#7C8CFF", unlockLevel: 18 },
@@ -1543,7 +1561,7 @@ function Zukan({ profile, onBack }) {
                   className="text-4xl mb-1"
                   style={{ filter: seen ? "none" : "brightness(0)", opacity: seen ? 1 : 0.5 }}
                 >
-                  {locked ? "🔒" : r.emoji}
+                  {locked ? "🔒" : <MonsterEmoji rank={r} className="w-12 h-12 object-contain inline-block" />}
                 </span>
                 <p className="text-sm font-bold" style={{ color: seen ? "#F3F5FF" : "#4A4F72" }}>
                   {seen ? r.monster : "？？？"}
@@ -1612,7 +1630,11 @@ function BattleSetup({ profile, onStart, onCancel }) {
                 backgroundColor: aiRank === key ? `${r.color}1A` : "transparent",
               }}
             >
-              <span className="text-2xl">{locked ? "🔒" : r.emoji}</span>
+              {locked ? (
+                <span className="text-2xl">🔒</span>
+              ) : (
+                <MonsterEmoji rank={r} className="w-8 h-8 object-contain" />
+              )}
               <span>{locked ? "？？？" : r.monster}</span>
               <span className="text-[9px] opacity-70">{locked ? `Lv.${r.unlockLevel}〜` : r.label}</span>
             </button>
@@ -1780,13 +1802,12 @@ function Battle({ profile, unitIndex, aiRankKey, onFinish }) {
           <div className="flex flex-col items-center">
             <div
               style={{
-                fontSize: 40,
                 transform: hitFlash ? "scale(0.88) rotate(-4deg)" : "scale(1)",
                 filter: hitFlash ? "brightness(1.7) drop-shadow(0 0 12px #FF5D73)" : "none",
                 transition: "all .15s ease",
               }}
             >
-              {aiRank.emoji}
+              <MonsterEmoji rank={aiRank} className="w-10 h-10 object-contain" style={{ display: "block" }} />
             </div>
             <p className="text-[10px] font-bold mt-0.5" style={{ color: aiRank.color }}>{aiRank.monster}</p>
             <div className="w-24 h-2.5 rounded-full overflow-hidden mt-1" style={{ backgroundColor: "#1B1F3B", border: `1px solid ${aiRank.color}` }}>
@@ -1816,7 +1837,7 @@ function Battle({ profile, unitIndex, aiRankKey, onFinish }) {
         </div>
         <div className="text-center text-[10px] text-[#8B90BE] my-1 tracking-widest">VS</div>
         <div className="flex items-center gap-2 mb-4">
-          <span className="text-xl">{aiRank.emoji}</span>
+          <MonsterEmoji rank={aiRank} className="w-6 h-6 object-contain" />
           <div className="flex-1 h-3 bg-[#1B1F3B] rounded-full overflow-hidden">
             <div
               className="h-full transition-all"
@@ -2068,7 +2089,9 @@ function BattleResult({ profile, result, aiRankKey, coinsEarned, recordInfo, onD
           🏆 NEW RECORD！
         </div>
       )}
-      <span className="text-5xl mb-2">{aiRank.emoji}</span>
+      <span className="mb-2">
+        <MonsterEmoji rank={aiRank} className="w-16 h-16 object-contain" />
+      </span>
       <p className="text-xs tracking-widest mb-2" style={{ color: aiRank.color }}>
         VS {aiRank.monster} ({aiRank.label})
       </p>
