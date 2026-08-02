@@ -431,11 +431,12 @@ async function saveProfile(p) {
   } catch {}
 }
 
-function freshProfile(id, name, avatar) {
+function freshProfile(id, name, avatar, characterId) {
   return {
     id,
     name,
     avatar,
+    characterId: characterId || null,
     unitIndex: 0,
     unitProgress: {}, // unitId -> {bestAcc, bestAvgTime}
     battle: { wins: 0, losses: 0, draws: 0 },
@@ -710,7 +711,7 @@ function TopBar({ profile, onHome, onSwitchProfile }) {
             onClick={onSwitchProfile}
             className="flex items-center gap-2 text-sm text-[#8B90BE] hover:text-[#F3F5FF] transition"
           >
-            <span className="text-lg">{profile.avatar}</span>
+            <CharacterImage characterId={profile.characterId} avatar={profile.avatar} className="w-5 h-5 object-contain" style={{ fontSize: 18, lineHeight: 1 }} />
             <span>{profile.name}</span>
           </button>
         </div>
@@ -746,11 +747,31 @@ function CharacterThumb({ character, className }) {
   );
 }
 
+/* プロフィールのアバター表示用共通コンポーネント。
+   characterId から CHARACTERS を引いて画像表示し、
+   characterId が無い/該当キャラが無い/画像読み込み失敗のいずれの場合も
+   必ず avatar(代表絵文字)へフォールバックする。既存プロフィール(characterId無し)もそのまま動作する。 */
+function CharacterImage({ characterId, avatar, className, style }) {
+  const character = CHARACTERS.find((c) => c.id === characterId);
+  const fallback = <span className={className} style={style}>{avatar}</span>;
+  if (!character) return fallback;
+  return (
+    <AssetImage
+      src={character.img}
+      alt={character.name}
+      className={className}
+      style={style}
+      fallback={fallback}
+    />
+  );
+}
+
 function ProfileSelect({ onSelect }) {
   const [profiles, setProfiles] = useState(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState(CHARACTERS[0].emoji);
+  const [characterId, setCharacterId] = useState(CHARACTERS[0].id);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -764,8 +785,8 @@ function ProfileSelect({ onSelect }) {
       return;
     }
     const id = `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    const p = freshProfile(id, trimmed, avatar);
-    const newList = [...(profiles || []), { id, name: trimmed, avatar }];
+    const p = freshProfile(id, trimmed, avatar, characterId);
+    const newList = [...(profiles || []), { id, name: trimmed, avatar, characterId }];
     await saveProfiles(newList);
     await saveProfile(p);
     setProfiles(newList);
@@ -801,11 +822,11 @@ function ProfileSelect({ onSelect }) {
             key={p.id}
             onClick={async () => {
               const full = await loadProfile(p.id);
-              onSelect(full || freshProfile(p.id, p.name, p.avatar));
+              onSelect(full || freshProfile(p.id, p.name, p.avatar, p.characterId));
             }}
             className="w-full flex items-center gap-4 bg-[#1B1F3B] hover:bg-[#242A4F] transition rounded-2xl px-5 py-4 border border-[#242A4F]"
           >
-            <span className="text-3xl">{p.avatar}</span>
+            <CharacterImage characterId={p.characterId} avatar={p.avatar} className="w-9 h-9 object-contain" style={{ fontSize: 30, lineHeight: 1 }} />
             <span className="font-semibold text-lg">{p.name}</span>
           </button>
         ))}
@@ -849,9 +870,12 @@ function ProfileSelect({ onSelect }) {
                   <button
                     key={c.id}
                     type="button"
-                    onClick={() => setAvatar(c.emoji)}
+                    onClick={() => {
+                      setAvatar(c.emoji);
+                      setCharacterId(c.id);
+                    }}
                     className={`flex flex-col items-center rounded-xl border px-1.5 py-2 transition ${
-                      avatar === c.emoji
+                      characterId === c.id
                         ? "border-[#4FE0D0] bg-[#4FE0D0]/10"
                         : "border-[#3A4070]"
                     }`}
@@ -899,7 +923,7 @@ function Home({ profile, onStartPractice, onReviewUnit, onStartBattle, onOpenZuk
 
       <div className="px-5 py-6 max-w-md mx-auto">
         <div className="flex items-center gap-3 bg-[#1B1F3B] rounded-2xl p-4 border border-[#242A4F] mb-3">
-          <span className="text-2xl">{profile.avatar}</span>
+          <CharacterImage characterId={profile.characterId} avatar={profile.avatar} className="w-8 h-8 object-contain" style={{ fontSize: 24, lineHeight: 1 }} />
           <div className="flex-1">
             <div className="flex items-center justify-between">
               <p className="text-sm font-bold flex items-center gap-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#FFC864" }}>
@@ -1800,13 +1824,12 @@ function Battle({ profile, unitIndex, aiRankKey, onFinish }) {
           <div className="flex flex-col items-center">
             <div
               style={{
-                fontSize: 40,
                 transform: playerHitFlash ? "scale(0.88) rotate(4deg)" : "scale(1)",
                 filter: playerHitFlash ? "brightness(1.7) drop-shadow(0 0 12px #FF5D73)" : "none",
                 transition: "all .15s ease",
               }}
             >
-              {profile.avatar}
+              <CharacterImage characterId={profile.characterId} avatar={profile.avatar} className="w-10 h-10 object-contain" style={{ display: "block", fontSize: 40, lineHeight: 1 }} />
             </div>
             <p className="text-[10px] font-bold mt-0.5" style={{ color: "#4FE0D0" }}>{profile.name}</p>
             <div className="w-24 h-2.5 rounded-full overflow-hidden mt-1" style={{ backgroundColor: "#1B1F3B", border: "1px solid #4FE0D0" }}>
@@ -1851,7 +1874,7 @@ function Battle({ profile, unitIndex, aiRankKey, onFinish }) {
 
         {/* VSアリーナバー(進み具合の目安) */}
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xl">{profile.avatar}</span>
+          <CharacterImage characterId={profile.characterId} avatar={profile.avatar} className="w-6 h-6 object-contain" style={{ fontSize: 20, lineHeight: 1 }} />
           <div className="flex-1 h-3 bg-[#1B1F3B] rounded-full overflow-hidden">
             <div
               className="h-full"
