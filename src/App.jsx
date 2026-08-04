@@ -437,6 +437,9 @@ function freshProfile(id, name, avatar, characterId) {
     name,
     avatar,
     characterId: characterId || null,
+    unlockedLocations: ["village"], // SOHARIAストーリー: 解放済み拠点
+    worldFlags: {}, // SOHARIAストーリー: イベント進行フラグ
+    redeemedCodes: [], // 修行ノート等のコード: 使用済みコード一覧(同一プロフィール内の重複使用のみ防止)
     unitIndex: 0,
     unitProgress: {}, // unitId -> {bestAcc, bestAvgTime}
     battle: { wins: 0, losses: 0, draws: 0 },
@@ -912,7 +915,7 @@ function ProfileSelect({ onSelect }) {
 
 /* ---------------- ホーム画面 ---------------- */
 
-function Home({ profile, onStartPractice, onReviewUnit, onStartBattle, onOpenZukan, onSwitchProfile }) {
+function Home({ profile, onStartPractice, onReviewUnit, onStartBattle, onOpenZukan, onOpenWorldMap, onOpenCodeRedeem, onSwitchProfile }) {
   const unit = UNITS[profile.unitIndex];
   const rank = rankForUnitIndex(profile.unitIndex);
   const progressPct = Math.round((profile.unitIndex / LAST_UNIT_INDEX) * 100);
@@ -1029,6 +1032,32 @@ function Home({ profile, onStartPractice, onReviewUnit, onStartBattle, onOpenZuk
               <p className="text-[10px] text-[#8B90BE]">
                 {Object.values(profile.monsterDefeats || {}).filter((n) => n > 0).length} / {Object.keys(AI_RANKS).length} コンプリート
               </p>
+            </div>
+          </button>
+
+          <button
+            onClick={onOpenWorldMap}
+            className="rounded-2xl p-4 text-left border flex items-center gap-3 transition"
+            style={{
+              background: "linear-gradient(135deg, #1B1F3B 0%, #242A4F 100%)",
+              borderColor: "#FFC864",
+            }}
+          >
+            <span className="text-2xl">✨</span>
+            <div>
+              <p className="text-sm font-bold" style={{ color: "#FFC864" }}>SOHARIAストーリーへ</p>
+              <p className="text-[10px] text-[#8B90BE]">物語をすすめて、世界に光をとりもどそう</p>
+            </div>
+          </button>
+
+          <button
+            onClick={onOpenCodeRedeem}
+            className="rounded-2xl p-4 text-left bg-[#1B1F3B] border border-[#242A4F] hover:border-[#8B90BE] transition flex items-center gap-3"
+          >
+            <span className="text-2xl">🎟️</span>
+            <div>
+              <p className="text-sm font-bold">コードを いれる</p>
+              <p className="text-[10px] text-[#8B90BE]">修行ノートの コードで ごほうびをうけとる</p>
             </div>
           </button>
         </div>
@@ -1636,6 +1665,256 @@ function Zukan({ profile, onBack }) {
 }
 
 
+/* ---------------- SOHARIAストーリー(ワールドマップ) ----------------
+   既存のAIバトル(スコア・HP・NEW RECORD)とは別の、物語を進めるモード。
+   Phase2時点ではワールドマップの表示と拠点の解放状態のみを扱い、
+   各拠点の中身(村・NPC・イベント)は今後のフェーズで追加する。
+   既存のunitIndex・coins・xp・records・monsterDefeats・battleには一切触れない。
+   ============================================================ */
+
+const LOCATIONS = [
+  { id: "village", name: "村", emoji: "🏘️", x: 50, y: 84, connections: ["forest", "river"] },
+  { id: "forest", name: "森", emoji: "🌳", x: 22, y: 58, connections: ["village", "mountain"] },
+  { id: "river", name: "湖", emoji: "🌊", x: 78, y: 58, connections: ["village", "cave"] },
+  { id: "mountain", name: "山", emoji: "⛰️", x: 30, y: 30, connections: ["forest", "castle"] },
+  { id: "cave", name: "洞窟", emoji: "🕳️", x: 70, y: 30, connections: ["river", "castle"] },
+  { id: "castle", name: "城", emoji: "🏰", x: 50, y: 10, connections: ["mountain", "cave"] },
+];
+
+function locationConnectionLines() {
+  const seen = new Set();
+  const lines = [];
+  LOCATIONS.forEach((loc) => {
+    loc.connections.forEach((toId) => {
+      const key = [loc.id, toId].sort().join("-");
+      if (seen.has(key)) return;
+      seen.add(key);
+      const to = LOCATIONS.find((l) => l.id === toId);
+      if (!to) return;
+      lines.push({ key, x1: loc.x, y1: loc.y, x2: to.x, y2: to.y });
+    });
+  });
+  return lines;
+}
+
+function WorldMap({ profile, onBack, onOpenLocation }) {
+  const unlocked = profile.unlockedLocations || ["village"];
+  const lines = locationConnectionLines();
+
+  return (
+    <div className="min-h-screen bg-[#0F1226] text-[#F3F5FF]" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#242A4F]">
+        <button onClick={onBack} className="text-[#8B90BE] text-sm">← もどる</button>
+        <p className="font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+          SOHARIA<span style={{ color: "#FF7A45" }}>ストーリー</span>
+        </p>
+      </div>
+
+      <div className="px-5 py-6 max-w-md mx-auto">
+        <p className="text-xs text-[#8B90BE] mb-4 text-center">
+          いきたい ばしょを タップしてね
+        </p>
+
+        <div
+          className="relative w-full rounded-2xl border border-[#242A4F]"
+          style={{
+            aspectRatio: "1 / 1.15",
+            background: "radial-gradient(120% 100% at 50% 100%, #1B1F3B 0%, #0F1226 70%)",
+          }}
+        >
+          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {lines.map((l) => (
+              <line
+                key={l.key}
+                x1={l.x1}
+                y1={l.y1}
+                x2={l.x2}
+                y2={l.y2}
+                stroke="#3A4070"
+                strokeWidth="1.2"
+                strokeDasharray="3,3"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </svg>
+
+          {LOCATIONS.map((loc) => {
+            const isUnlocked = unlocked.includes(loc.id);
+            return (
+              <button
+                key={loc.id}
+                onClick={() => isUnlocked && onOpenLocation(loc.id)}
+                disabled={!isUnlocked}
+                className="absolute flex flex-col items-center"
+                style={{
+                  left: `${loc.x}%`,
+                  top: `${loc.y}%`,
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                <div
+                  style={{
+                    width: 60,
+                    height: 60,
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    filter: isUnlocked ? "drop-shadow(0 0 10px #4FE0D099)" : "none",
+                    opacity: isUnlocked ? 1 : 0.5,
+                  }}
+                >
+                  <svg width={60} height={60} viewBox="0 0 100 100">
+                    <polygon
+                      points="50,3 93,26 93,74 50,97 7,74 7,26"
+                      fill="#1B1F3B"
+                      stroke={isUnlocked ? "#4FE0D0" : "#3A4070"}
+                      strokeWidth="3"
+                    />
+                  </svg>
+                  <span className="absolute text-2xl">{isUnlocked ? loc.emoji : "🔒"}</span>
+                </div>
+                <span
+                  className="text-[10px] font-bold mt-1 px-2 py-0.5 rounded-full"
+                  style={{
+                    backgroundColor: "#1B1F3B",
+                    color: isUnlocked ? "#F3F5FF" : "#4A4F72",
+                    border: "1px solid #242A4F",
+                  }}
+                >
+                  {loc.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <p className="text-[10px] text-[#4A4F72] mt-4 text-center">
+          冒険をすすめると、あたらしい ばしょが ひらけるよ
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* 各拠点の中身は今後のフェーズで追加。現時点では簡易プレースホルダーのみ表示する。 */
+function LocationComingSoon({ locationId, onBack }) {
+  const loc = LOCATIONS.find((l) => l.id === locationId);
+  return (
+    <div className="min-h-screen bg-[#0F1226] text-[#F3F5FF] flex flex-col items-center justify-center px-6" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <span className="text-5xl mb-4">{loc ? loc.emoji : "✨"}</span>
+      <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+        {loc ? loc.name : ""}
+      </h2>
+      <p className="text-[#8B90BE] text-sm text-center mb-8">
+        ここでの ぼうけんは、もうすぐ はじまるよ。
+        <br />
+        おたのしみに！
+      </p>
+      <button
+        onClick={onBack}
+        style={{ backgroundColor: "#4FE0D0", color: "#0F1226" }}
+        className="px-6 py-3 rounded-xl font-bold"
+      >
+        マップへ もどる
+      </button>
+    </div>
+  );
+}
+
+
+/* ---------------- 修行ノート・コード交換(簡易版) ----------------
+   サーバー無しの簡易実装。同一プロフィール内での重複使用のみ防止する
+   (コード自体のコピー・使い回しを完全に防ぐには将来サーバー側の検証が必要)。
+   既存のcoins/xp加算ロジックをそのまま使い、報酬の渡し方は変更しない。
+   ============================================================ */
+
+const CODES = {
+  "SHA-7KQ4-MP82": { label: "SOHARIA修行ノート Vol.1", coins: 50 },
+};
+
+function CodeRedeem({ profile, onRedeem, onBack }) {
+  const [input, setInput] = useState("");
+  const [result, setResult] = useState(null); // { ok: true, label, coins } | { ok: false, message }
+
+  const handleSubmit = () => {
+    const code = input.trim().toUpperCase();
+    if (!code) return;
+
+    const entry = CODES[code];
+    const redeemed = profile.redeemedCodes || [];
+
+    if (!entry) {
+      setResult({ ok: false, message: "そのコードは みつからなかったよ" });
+      return;
+    }
+    if (redeemed.includes(code)) {
+      setResult({ ok: false, message: "このコードは もう つかっているよ" });
+      return;
+    }
+
+    onRedeem(code, entry);
+    setResult({ ok: true, label: entry.label, coins: entry.coins });
+    setInput("");
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0F1226] text-[#F3F5FF] flex flex-col" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#242A4F]">
+        <button onClick={onBack} className="text-[#8B90BE] text-sm">← もどる</button>
+        <p className="font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+          コードを <span style={{ color: "#FF7A45" }}>いれる</span>
+        </p>
+      </div>
+
+      <div className="px-6 py-8 max-w-sm mx-auto w-full flex-1 flex flex-col items-center">
+        <span className="text-5xl mb-4">🎟️</span>
+        <p className="text-sm text-[#8B90BE] mb-6 text-center">
+          修行ノートの さいごのページにある
+          <br />
+          コードを にゅうりょくしてね
+        </p>
+
+        <input
+          value={input}
+          onChange={(e) => {
+            setInput(e.target.value);
+            setResult(null);
+          }}
+          placeholder="SHA-XXXX-XXXX"
+          autoCapitalize="characters"
+          style={{ backgroundColor: "#FFFFFF", color: "#0F1226" }}
+          className="w-full text-center tracking-widest font-mono text-lg border border-[#3A4070] rounded-xl px-4 py-3 outline-none focus:border-[#4FE0D0] mb-4"
+        />
+
+        <button
+          onClick={handleSubmit}
+          disabled={!input.trim()}
+          style={{ backgroundColor: "#4FE0D0", color: "#0F1226" }}
+          className="w-full py-3 rounded-xl font-bold disabled:opacity-30 mb-6"
+        >
+          コードを つかう
+        </button>
+
+        {result && result.ok && (
+          <div
+            className="w-full rounded-2xl p-5 text-center border"
+            style={{ backgroundColor: "#1B1F3B", borderColor: "#FFC864", animation: "mb-pop-scale .4s ease" }}
+          >
+            <p className="text-sm font-bold mb-2" style={{ color: "#FFC864" }}>✨ {result.label}</p>
+            <p className="text-xs text-[#8B90BE] mb-3">コードが つかえたよ！</p>
+            <CoinCounter amount={result.coins} />
+          </div>
+        )}
+
+        {result && !result.ok && (
+          <p className="text-sm text-center" style={{ color: "#FF5D73" }}>{result.message}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function BattleSetup({ profile, onStart, onCancel }) {
   const [unitIdx, setUnitIdx] = useState(profile.unitIndex);
   const [aiRank, setAiRank] = useState("normal");
@@ -2181,7 +2460,8 @@ export default function MathBattleApp() {
   }, []);
 
   const [profile, setProfile] = useState(null);
-  const [screen, setScreen] = useState("select"); // select | home | practice | practiceResult | battleSetup | battle | battleResult
+  const [screen, setScreen] = useState("select"); // select | home | practice | practiceResult | battleSetup | battle | battleResult | worldMap | location
+  const [activeLocationId, setActiveLocationId] = useState(null);
   const [practiceUnitIndex, setPracticeUnitIndex] = useState(0);
   const [practiceResult, setPracticeResult] = useState(null);
   const [practiceRecordInfo, setPracticeRecordInfo] = useState({ isNewRecord: false, bestTimeMs: null });
@@ -2322,6 +2602,8 @@ export default function MathBattleApp() {
         }}
         onStartBattle={() => setScreen("battleSetup")}
         onOpenZukan={() => setScreen("zukan")}
+        onOpenWorldMap={() => setScreen("worldMap")}
+        onOpenCodeRedeem={() => setScreen("codeRedeem")}
         onSwitchProfile={() => setScreen("select")}
       />
     );
@@ -2329,6 +2611,42 @@ export default function MathBattleApp() {
 
   if (screen === "zukan") {
     return <Zukan profile={profile} onBack={() => setScreen("home")} />;
+  }
+
+  if (screen === "codeRedeem") {
+    return (
+      <CodeRedeem
+        profile={profile}
+        onBack={() => setScreen("home")}
+        onRedeem={async (code, entry) => {
+          const updated = {
+            ...profile,
+            redeemedCodes: [...(profile.redeemedCodes || []), code],
+            coins: (profile.coins || 0) + (entry.coins || 0),
+            xp: (profile.xp || 0) + (entry.coins || 0),
+          };
+          setProfile(updated);
+          await saveProfile(updated);
+        }}
+      />
+    );
+  }
+
+  if (screen === "worldMap") {
+    return (
+      <WorldMap
+        profile={profile}
+        onBack={() => setScreen("home")}
+        onOpenLocation={(locId) => {
+          setActiveLocationId(locId);
+          setScreen("location");
+        }}
+      />
+    );
+  }
+
+  if (screen === "location") {
+    return <LocationComingSoon locationId={activeLocationId} onBack={() => setScreen("worldMap")} />;
   }
 
   if (screen === "practice") {
